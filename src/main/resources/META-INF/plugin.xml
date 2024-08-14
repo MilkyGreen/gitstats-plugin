@@ -9,7 +9,7 @@
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.milkygreen.gitstatsplugin.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
+        <toolWindow factoryClass="com.github.milkygreen.gitstatsplugin.toolWindow.GitStatsToolWindowFactory" id="GitStats"/>
     </extensions>
 
     <applicationListeners>
