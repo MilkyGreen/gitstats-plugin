@@ -6,6 +6,9 @@ import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.content.Content
 import com.intellij.ui.content.ContentFactory
+import getContributorsWithLatestCommit
+import getDeveloperStats
+import kotlinx.coroutines.runBlocking
 import javax.swing.*
 import javax.swing.table.DefaultTableModel
 import javax.swing.table.TableCellRenderer
@@ -30,6 +33,7 @@ class GitStatsToolWindowFactory : ToolWindowFactory, DumbAware {
             contentPanel.border = BorderFactory.createEmptyBorder(40, 0, 0, 0)
             contentPanel.add(createControlsPanel(), BorderLayout.PAGE_END)
             contentPanel.add(createTablePanel(), BorderLayout.CENTER)
+            refreshTableData() // Load data during initialization
         }
 
         private fun createControlsPanel(): JPanel {
@@ -41,12 +45,8 @@ class GitStatsToolWindowFactory : ToolWindowFactory, DumbAware {
 
         private fun createTablePanel(): JPanel {
             val tablePanel = JPanel(BorderLayout())
-            val columnNames = arrayOf("Name", "Commits", "Language")
-            val data = arrayOf(
-                arrayOf("Alice", 42, "Java, Kotlin, Python"),
-                arrayOf("Bob", 37, "Kotlin, Scala"),
-                arrayOf("Charlie", 29, "Python, JavaScript, TypeScript")
-            )
+            val columnNames = arrayOf("Name", "Commits", "Languages", "Latest Commit")
+            val data = arrayOf<Array<Any>>()
             tableModel = object : DefaultTableModel(data, columnNames) {
                 override fun isCellEditable(row: Int, column: Int): Boolean {
                     return false // Make cells non-editable
@@ -55,6 +55,7 @@ class GitStatsToolWindowFactory : ToolWindowFactory, DumbAware {
             val table = JTable(tableModel)
             table.rowHeight = 50 // Set custom row height
             table.setDefaultRenderer(Any::class.java, WordWrapCellRenderer())
+            adjustColumnWidths(table)
             val scrollPane = JScrollPane(table)
             tablePanel.add(scrollPane, BorderLayout.CENTER)
             return tablePanel
@@ -62,15 +63,37 @@ class GitStatsToolWindowFactory : ToolWindowFactory, DumbAware {
 
         private fun refreshTableData() {
             refreshButton.isEnabled = false
-            // Simulate fetching new data
             SwingUtilities.invokeLater {
-                val newData = arrayOf(
-                    arrayOf("David", 50, "Go, Rust"),
-                    arrayOf("Eve", 45, "Ruby, Perl"),
-                    arrayOf("Frank", 40, "C++, C#")
-                )
-                tableModel.setDataVector(newData, arrayOf("Name", "Commits", "Language"))
-                refreshButton.isEnabled = true
+                runBlocking {
+                    val repoPath = "/Users/yunmli/Desktop/projects/ebay/yunmli/mjolnir"
+                    val contributors = getContributorsWithLatestCommit(repoPath)
+                    val newData = contributors.map { contributor ->
+                        val stats = getDeveloperStats(repoPath, contributor.name)
+                        arrayOf(
+                            contributor.name,
+                            stats.commitCount,
+                            stats.languages.joinToString(", "),
+                            contributor.relativeDate
+                        )
+                    }.toTypedArray()
+                    tableModel.setDataVector(newData, arrayOf("Name", "Commits", "Languages", "Latest Commit"))
+                    val table = JTable(tableModel)
+                    adjustColumnWidths(table)
+                    refreshButton.isEnabled = true
+                }
+            }
+        }
+
+        private fun adjustColumnWidths(table: JTable) {
+            val minColumnWidth = 100
+            for (column in 0 until table.columnCount) {
+                var maxWidth = minColumnWidth
+                for (row in 0 until table.rowCount) {
+                    val renderer = table.getCellRenderer(row, column)
+                    val comp = table.prepareRenderer(renderer, row, column)
+                    maxWidth = maxOf(comp.preferredSize.width + 10, maxWidth)
+                }
+                table.columnModel.getColumn(column).preferredWidth = maxWidth
             }
         }
     }

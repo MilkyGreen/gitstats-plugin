@@ -192,14 +192,14 @@ fun main() = runBlocking {
             contributors.forEach { contributor ->
                 println("${contributor.name}: ${contributor.relativeDate}")
 
-//                val stats = getDeveloperStats(repoPath, contributor.name)
-//                println("Total commits by ${contributor.name}: ${stats.commitCount}")
-//                println("Languages used by ${contributor.name}:")
-//                stats.languages.forEach { println(it) }
-//                println("File counts per language (sorted by count):")
-//                stats.languageFileCounts.forEach { (language, count) ->
-//                    println("$language: $count")
-//                }
+                val stats = getDeveloperStats(repoPath, contributor.name)
+                println("Total commits by ${contributor.name}: ${stats.commitCount}")
+                println("Languages used by ${contributor.name}:")
+                stats.languages.forEach { println(it) }
+                println("File counts per language (sorted by count):")
+                stats.languageFileCounts.forEach { (language, count) ->
+                    println("$language: $count")
+                }
             }
         }
         println("Time taken: $timeTaken ms")
