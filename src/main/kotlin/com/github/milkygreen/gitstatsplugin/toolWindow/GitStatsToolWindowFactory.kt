@@ -1,5 +1,6 @@
 package com.github.milkygreen.gitstatsplugin.toolWindow
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
@@ -8,6 +9,7 @@ import com.intellij.ui.content.Content
 import com.intellij.ui.content.ContentFactory
 import getContributorsWithLatestCommit
 import getDeveloperStats
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import javax.swing.*
 import javax.swing.table.DefaultTableModel
@@ -63,10 +65,12 @@ class GitStatsToolWindowFactory : ToolWindowFactory, DumbAware {
 
         private fun refreshTableData() {
             refreshButton.isEnabled = false
-            SwingUtilities.invokeLater {
+            ApplicationManager.getApplication().executeOnPooledThread {
                 runBlocking {
-                    val repoPath = "/Users/yunmli/Desktop/projects/ebay/yunmli/mjolnir"
+                    delay(5000) // Simulate a long-running operation
+                    val repoPath = "/Users/yunmli/Desktop/projects/private/intellij-sdk-code-samples"
                     val contributors = getContributorsWithLatestCommit(repoPath)
+
                     val newData = contributors.map { contributor ->
                         val stats = getDeveloperStats(repoPath, contributor.name)
                         arrayOf(
@@ -76,10 +80,12 @@ class GitStatsToolWindowFactory : ToolWindowFactory, DumbAware {
                             contributor.relativeDate
                         )
                     }.toTypedArray()
-                    tableModel.setDataVector(newData, arrayOf("Name", "Commits", "Languages", "Latest Commit"))
-                    val table = JTable(tableModel)
-                    adjustColumnWidths(table)
-                    refreshButton.isEnabled = true
+                    SwingUtilities.invokeLater {
+                        tableModel.setDataVector(newData, arrayOf("Name", "Commits", "Languages", "Latest Commit"))
+                        val table = JTable(tableModel)
+                        adjustColumnWidths(table)
+                        refreshButton.isEnabled = true
+                    }
                 }
             }
         }

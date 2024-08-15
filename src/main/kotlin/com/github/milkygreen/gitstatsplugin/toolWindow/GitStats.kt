@@ -84,45 +84,44 @@ fun mapExtensionToLanguage(extension: String): String {
     return extensionToLanguageMap[extension] ?: "Unknown"
 }
 
-suspend fun getDeveloperStats(repoPath: String, author: String): DeveloperStats {
+fun getDeveloperStats(repoPath: String, author: String): DeveloperStats {
     val repoDir = File(repoPath)
     if (!repoDir.exists() || !repoDir.isDirectory) {
         throw IllegalArgumentException("Provided path is not a valid directory")
     }
 
-    return withContext(Dispatchers.IO) {
 
-        // 使用 git log 命令获取特定作者的提交，并提取其中的文件路径
-        val command = listOf("git", "log", "--author=$author", "--name-only", "--pretty=format:")
-        val process = ProcessBuilder(command)
-            .directory(repoDir)
-            .start()
+    // 使用 git log 命令获取特定作者的提交，并提取其中的文件路径
+    val command = listOf("git", "log", "--author=$author", "--name-only", "--pretty=format:")
+    val process = ProcessBuilder(command)
+        .directory(repoDir)
+        .start()
 
-        val output = process.inputStream.bufferedReader().readText()
-        process.waitFor()
+    val output = process.inputStream.bufferedReader().readText()
+    process.waitFor()
 
-        // 解析输出，获取文件扩展名
-        val files = output.lines().filter { it.isNotBlank() }
-        val extensions = files.map { File(it).extension }.filter { it.isNotEmpty() }.toSet()
+    // 解析输出，获取文件扩展名
+    val files = output.lines().filter { it.isNotBlank() }
+    val extensions = files.map { File(it).extension }.filter { it.isNotEmpty() }.toSet()
 
-        // 计算每种语言的文件数量
-        val languageFileCounts = files.groupingBy { mapExtensionToLanguage(File(it).extension) }
-            .eachCount()
-            .toList()
-            .sortedByDescending { it.second }
-            .toMap()
+    // 计算每种语言的文件数量
+    val languageFileCounts = files.groupingBy { mapExtensionToLanguage(File(it).extension) }
+        .eachCount()
+        .toList()
+        .sortedByDescending { it.second }
+        .toMap()
 
-        // 计算提交次数
-        val commitCountCommand = listOf("git", "rev-list", "--count", "HEAD", "--author=$author")
-        val commitCountProcess = ProcessBuilder(commitCountCommand)
-            .directory(repoDir)
-            .start()
+    // 计算提交次数
+    val commitCountCommand = listOf("git", "rev-list", "--count", "HEAD", "--author=$author")
+    val commitCountProcess = ProcessBuilder(commitCountCommand)
+        .directory(repoDir)
+        .start()
 
-        val commitCount = commitCountProcess.inputStream.bufferedReader().readText().trim().toInt()
-        commitCountProcess.waitFor()
+    val commitCount = commitCountProcess.inputStream.bufferedReader().readText().trim().toInt()
+    commitCountProcess.waitFor()
 
-        DeveloperStats(commitCount, extensions, languageFileCounts)
-    }
+    return DeveloperStats(commitCount, extensions, languageFileCounts)
+
 }
 
 fun getRelativeTime(date: Date): String {
@@ -146,40 +145,39 @@ fun getRelativeTime(date: Date): String {
     }
 }
 
-suspend fun getContributorsWithLatestCommit(repoPath: String): List<Contributor> {
+fun getContributorsWithLatestCommit(repoPath: String): List<Contributor> {
     val repoDir = File(repoPath)
     if (!repoDir.exists() || !repoDir.isDirectory) {
         throw IllegalArgumentException("Provided path is not a valid directory")
     }
 
-    return withContext(Dispatchers.IO) {
-        val command = listOf("git", "log", "--format=%an|%ad", "--date=raw")
-        val process = ProcessBuilder(command)
-            .directory(repoDir)
-            .start()
+    val command = listOf("git", "log", "--format=%an|%ad", "--date=raw")
+    val process = ProcessBuilder(command)
+        .directory(repoDir)
+        .start()
 
-        val output = process.inputStream.bufferedReader().readText()
-        process.waitFor()
+    val output = process.inputStream.bufferedReader().readText()
+    process.waitFor()
 
-        val dateFormat = SimpleDateFormat("EEE MMM dd HH:mm:ss yyyy Z", Locale.ENGLISH)
-        val contributors = output.lines()
-            .filter { it.isNotBlank() }
-            .map {
-                val parts = it.split("|")
-                val name = parts[0]
-                val rawDate = parts[1].split(" ")[0].toLong() * 1000
-                val date = Date(rawDate)
-                Contributor(name, date, getRelativeTime(date))
-            }
-            .groupBy { it.name }
-            .map { (name, commits) ->
-                val latestCommit = commits.maxByOrNull { it.latestCommitDate }!!
-                Contributor(name, latestCommit.latestCommitDate, latestCommit.relativeDate)
-            }
-            .sortedByDescending { it.latestCommitDate }
+    val dateFormat = SimpleDateFormat("EEE MMM dd HH:mm:ss yyyy Z", Locale.ENGLISH)
+    val contributors = output.lines()
+        .filter { it.isNotBlank() }
+        .map {
+            val parts = it.split("|")
+            val name = parts[0]
+            val rawDate = parts[1].split(" ")[0].toLong() * 1000
+            val date = Date(rawDate)
+            Contributor(name, date, getRelativeTime(date))
+        }
+        .groupBy { it.name }
+        .map { (name, commits) ->
+            val latestCommit = commits.maxByOrNull { it.latestCommitDate }!!
+            Contributor(name, latestCommit.latestCommitDate, latestCommit.relativeDate)
+        }
+        .sortedByDescending { it.latestCommitDate }
 
-        contributors
-    }
+    return contributors
+
 }
 
 fun main() = runBlocking {
