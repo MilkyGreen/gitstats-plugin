@@ -90,7 +90,6 @@ fun getDeveloperStats(repoPath: String, author: String): DeveloperStats {
         throw IllegalArgumentException("Provided path is not a valid directory")
     }
 
-
     // 使用 git log 命令获取特定作者的提交，并提取其中的文件路径
     val command = listOf("git", "log", "--author=$author", "--name-only", "--pretty=format:")
     val process = ProcessBuilder(command)
@@ -159,7 +158,6 @@ fun getContributorsWithLatestCommit(repoPath: String): List<Contributor> {
     val output = process.inputStream.bufferedReader().readText()
     process.waitFor()
 
-    val dateFormat = SimpleDateFormat("EEE MMM dd HH:mm:ss yyyy Z", Locale.ENGLISH)
     val contributors = output.lines()
         .filter { it.isNotBlank() }
         .map {
