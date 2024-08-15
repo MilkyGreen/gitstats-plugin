@@ -10,6 +10,8 @@ import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.table.JBTable
 import com.intellij.ui.components.JBTextField
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.wm.ToolWindowAnchor
+import com.intellij.toolWindow.ToolWindowDescriptor
 import getContributorsWithLatestCommit
 import getDeveloperStats
 import kotlinx.coroutines.delay
@@ -84,7 +86,8 @@ class GitStatsToolWindowFactory : ToolWindowFactory, DumbAware {
             }
             table = JTable(tableModel)
             table.rowHeight = 20 // Set custom row height
-            table.columnModel.getColumn(0).cellRenderer = ContributorNameCellRenderer() // Apply custom renderer
+//            table.columnModel.getColumn(0).cellRenderer = ContributorNameCellRenderer() // Apply custom renderer
+             // Apply custom renderer
             table.addMouseListener(object : MouseAdapter() {
                 override fun mouseClicked(e: MouseEvent) {
                     val row = table.rowAtPoint(e.point)
@@ -95,8 +98,9 @@ class GitStatsToolWindowFactory : ToolWindowFactory, DumbAware {
                     }
                 }
             })
-            adjustColumnWidths(table)
+//            adjustColumnWidths(table)
             val scrollPane = JScrollPane(table)
+            table.columnModel.getColumn(0).cellRenderer = ContributorNameCellRenderer()
             tablePanel.add(scrollPane, BorderLayout.CENTER)
 
             // Add loading icon to the center of the table panel
@@ -134,6 +138,7 @@ class GitStatsToolWindowFactory : ToolWindowFactory, DumbAware {
                         tableModel.setDataVector(originalData, columnNames)
                         adjustColumnWidths(table)
                         tablePanel.removeAll() // Remove loading panel
+                        table.columnModel.getColumn(0).cellRenderer = ContributorNameCellRenderer()
                         tablePanel.add(JScrollPane(table), BorderLayout.CENTER) // Add table
                         tablePanel.revalidate()
                         tablePanel.repaint()
@@ -205,6 +210,7 @@ class GitStatsToolWindowFactory : ToolWindowFactory, DumbAware {
             table: JTable, value: Any?, isSelected: Boolean, hasFocus: Boolean, row: Int, column: Int
         ): Component {
             text = value?.toString() ?: ""
+            foreground = Color.BLUE
             size = Dimension(table.columnModel.getColumn(column).width, preferredSize.height)
             if (table.getRowHeight(row) != preferredSize.height) {
                 table.setRowHeight(row, preferredSize.height)
@@ -221,9 +227,8 @@ class GitStatsToolWindowFactory : ToolWindowFactory, DumbAware {
             println("--------ContributorNameCellRenderer called------------")
             val component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
             if (component is JLabel) {
-                component.text = value?.toString() ?: ""
-                component.icon = AllIcons.General.ShowInfos // Add an icon next to the text
-                component.horizontalTextPosition = JLabel.RIGHT // Position the text to the right of the icon
+                component.text = "<html><u>${value?.toString() ?: ""}</u></html>" // Underline text
+                component.foreground = Color(100, 149, 237) // Set text color to a softer blue (Cornflower Blue)
             }
             return component
         }
