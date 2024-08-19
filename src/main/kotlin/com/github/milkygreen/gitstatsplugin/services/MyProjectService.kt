@@ -13,15 +13,16 @@ class MyProjectService(
 ) {
 
     data class DeveloperStats(
-        val commitCount: Int,
         val languages: Set<String>,
-        val languageFileCounts: Map<String, Int>
+        val languageFileCounts: Map<String, Int>,
+        val frameworks: Set<String>
     )
 
     data class Contributor(
         val name: String,
         val latestCommitDate: Date,
-        val relativeDate: String
+        val relativeDate: String,
+        val commitCount: Int
     )
 
     private val extensionToLanguageMap = mapOf(
@@ -87,8 +88,59 @@ class MyProjectService(
         "xml" to "XML"
     )
 
+    private fun detectFrameworks(files: List<String>): Set<String> {
+        val frameworks = mutableSetOf<String>()
+        files.forEach { file ->
+            when {
+                file.contains("build.gradle.kts") || file.contains("build.gradle") -> frameworks.add("Gradle")
+                file.contains("pom.xml") -> frameworks.add("Maven")
+                file.contains("package.json") -> frameworks.add("Node.js")
+                file.contains("Gemfile") -> frameworks.add("Ruby on Rails")
+                file.contains("composer.json") -> frameworks.add("PHP")
+                file.contains("pubspec.yaml") -> frameworks.add("Dart")
+                file.contains("mix.exs") -> frameworks.add("Elixir")
+                file.contains("Makefile") -> frameworks.add("Make")
+                file.contains("build.sbt") -> frameworks.add("Scala (SBT)")
+                file.contains("CMakeLists.txt") -> frameworks.add("CMake")
+                file.contains("build.xml") -> frameworks.add("Ant")
+                file.contains("webpack.config.js") -> frameworks.add("Webpack")
+                file.contains("angular.json") -> frameworks.add("Angular")
+                file.contains("vue.config.js") -> frameworks.add("Vue.js")
+                file.contains("next.config.js") -> frameworks.add("Next.js")
+                file.contains("nuxt.config.js") -> frameworks.add("Nuxt.js")
+                file.contains("gatsby-config.js") -> frameworks.add("Gatsby")
+                file.contains("server.js") || file.contains("app.js") -> frameworks.add("Express.js")
+                file.contains("spring-boot-starter") -> frameworks.add("Spring Boot")
+                file.contains("application.yml") -> frameworks.add("Spring Framework")
+                file.contains("application.properties") -> frameworks.add("Spring Framework")
+                file.contains("config.ru") -> frameworks.add("Rack")
+                file.contains("Rakefile") -> frameworks.add("Rake")
+                file.contains("Jenkinsfile") -> frameworks.add("Jenkins")
+                file.contains("Dockerfile") -> frameworks.add("Docker")
+                file.contains("Vagrantfile") -> frameworks.add("Vagrant")
+                file.contains("terraform") -> frameworks.add("Terraform")
+                file.contains("ansible") -> frameworks.add("Ansible")
+                file.contains("kubernetes") -> frameworks.add("Kubernetes")
+                file.contains("helm") -> frameworks.add("Helm")
+                file.contains("react") -> frameworks.add("React")
+                file.contains("redux") -> frameworks.add("Redux")
+                file.contains("vue") -> frameworks.add("Vue.js")
+                file.contains("svelte") -> frameworks.add("Svelte")
+                file.contains("ember") -> frameworks.add("Ember.js")
+                file.contains("backbone") -> frameworks.add("Backbone.js")
+                file.contains("jquery") -> frameworks.add("jQuery")
+                file.contains("bootstrap") -> frameworks.add("Bootstrap")
+                file.contains("tailwind") -> frameworks.add("Tailwind CSS")
+                file.contains("foundation") -> frameworks.add("Foundation")
+                file.contains("bulma") -> frameworks.add("Bulma")
+                // Add more framework detections as needed
+            }
+        }
+        return frameworks
+    }
+
     private fun mapExtensionToLanguage(extension: String): String {
-        return extensionToLanguageMap[extension] ?: extension
+        return if (extension.isEmpty()) "Unknown" else extensionToLanguageMap[extension] ?: extension
     }
 
     suspend fun getDeveloperStats(author: String): DeveloperStats {
@@ -119,19 +171,9 @@ class MyProjectService(
             .sortedByDescending { it.second }
             .toMap()
 
-        val commitCountCommand = listOf("git", "rev-list", "--count", "HEAD", "--author=$author")
-        val commitCountProcess = withContext(Dispatchers.IO) {
-            ProcessBuilder(commitCountCommand)
-                .directory(repoDir)
-                .start()
-        }
+        val frameworks = detectFrameworks(files)
 
-        val commitCount = commitCountProcess.inputStream.bufferedReader().readText().trim().toInt()
-        withContext(Dispatchers.IO) {
-            commitCountProcess.waitFor()
-        }
-
-        return DeveloperStats(commitCount, extensions, languageFileCounts)
+        return DeveloperStats(extensions, languageFileCounts,frameworks)
 
     }
 
@@ -183,12 +225,22 @@ class MyProjectService(
                 val name = parts[0]
                 val rawDate = parts[1].split(" ")[0].toLong() * 1000
                 val date = Date(rawDate)
-                Contributor(name, date, getRelativeTime(date))
+                Contributor(name, date, getRelativeTime(date),0)
             }
             .groupBy { it.name }
             .map { (name, commits) ->
                 val latestCommit = commits.maxByOrNull { it.latestCommitDate }!!
-                Contributor(name, latestCommit.latestCommitDate, latestCommit.relativeDate)
+                val commitCountCommand = listOf("git", "rev-list", "--count", "HEAD", "--author=$name")
+                val commitCountProcess = withContext(Dispatchers.IO) {
+                    ProcessBuilder(commitCountCommand)
+                        .directory(repoDir)
+                        .start()
+                }
+                val commitCount = commitCountProcess.inputStream.bufferedReader().readText().trim().toInt()
+                withContext(Dispatchers.IO) {
+                    commitCountProcess.waitFor()
+                }
+                Contributor(name, latestCommit.latestCommitDate, latestCommit.relativeDate, commitCount)
             }
             .sortedByDescending { it.latestCommitDate }
             .toList()

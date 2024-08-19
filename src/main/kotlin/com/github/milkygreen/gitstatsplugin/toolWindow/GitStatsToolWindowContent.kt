@@ -115,13 +115,9 @@ class GitStatsToolWindowContent(private val toolWindow: ToolWindow, private val 
         cs.launch {
             try {
                 val contributors = withContext(Dispatchers.Default) { service.getContributorsWithLatestCommit() }
-                val deferredStats = contributors.map { contributor ->
-                    async(Dispatchers.Default) {
-                        val stats = service.getDeveloperStats(contributor.name)
-                        arrayOf<Any>(contributor.name, stats.commitCount, contributor.relativeDate)
-                    }
-                }
-                originalData = deferredStats.awaitAll().toTypedArray()
+                originalData = contributors.map { contributor ->
+                    arrayOf<Any>(contributor.name, contributor.commitCount, contributor.relativeDate)
+                }.toTypedArray()
                 withContext(Dispatchers.EDT) { updateTableView() }
             } catch (e: Exception) {
                 handleRefreshError(e)
@@ -196,13 +192,13 @@ class GitStatsToolWindowContent(private val toolWindow: ToolWindow, private val 
                 }
                 withContext(Dispatchers.EDT) {
                     val dialog = JDialog()
-                    dialog.title = "Contributor Details"
+                    dialog.title = contributorName
                     dialog.setSize(600, 400) // Set suitable width and height
                     dialog.setLocationRelativeTo(null)
                     dialog.isModal = true
 
                     val mainPanel = JPanel(BorderLayout())
-                    val topPanel = createTopPanel(contributorName, contributorStats.commitCount)
+                    val topPanel = createTopPanel(contributorStats.frameworks)
                     val scrollPane = createLanguageTable(contributorStats.languageFileCounts)
 
                     mainPanel.add(topPanel, BorderLayout.NORTH)
@@ -217,22 +213,38 @@ class GitStatsToolWindowContent(private val toolWindow: ToolWindow, private val 
         }
     }
 
-    private fun createTopPanel(contributorName: String, commitCount: Int): JPanel {
+    private fun createTopPanel(frameworks: Set<String>): JPanel {
         val topPanel = JPanel(BorderLayout())
-        val nameLabel = JLabel("Contributor: $contributorName")
-        val commitsLabel = JLabel("Commits: $commitCount")
-        topPanel.add(nameLabel, BorderLayout.NORTH)
-        topPanel.add(commitsLabel, BorderLayout.SOUTH)
+
+        val frameworksPanel = JPanel()
+        frameworksPanel.layout = BoxLayout(frameworksPanel, BoxLayout.X_AXIS)
+
+        val frameworksTitle = JLabel("Tools & Frameworks: ")
+        frameworksTitle.font = frameworksTitle.font.deriveFont(14f)
+        frameworksTitle.border = BorderFactory.createEmptyBorder(5, 0, 5, 0)
+        frameworksPanel.add(frameworksTitle)
+
+        val frameworksLabel = JLabel(frameworks.joinToString(" | "))
+        frameworksPanel.add(frameworksLabel)
+
+        val centeredPanel = JPanel(BorderLayout())
+        centeredPanel.add(frameworksPanel, BorderLayout.CENTER)
+        centeredPanel.border = BorderFactory.createEmptyBorder(20, 0, 20, 0)
+
+        topPanel.add(centeredPanel, BorderLayout.CENTER)
         return topPanel
     }
 
     private fun createLanguageTable(languageFileCounts: Map<String, Int>): JScrollPane {
-        val columnNames = arrayOf("Language", "Count")
-        val data = languageFileCounts.entries
+        val columnNames = arrayOf("Language/File", "Count")
+        val data = mutableListOf<Array<Any>>()
+
+        // Add language file counts to the table data
+        data.addAll(languageFileCounts.entries
             .sortedByDescending { it.value }
-            .map { arrayOf(it.key, it.value) }
-            .toTypedArray()
-        val tableModel = DefaultTableModel(data, columnNames)
+            .map { arrayOf(it.key, it.value) })
+
+        val tableModel = DefaultTableModel(data.toTypedArray(), columnNames)
         val table = JTable(tableModel)
         return JScrollPane(table)
     }
