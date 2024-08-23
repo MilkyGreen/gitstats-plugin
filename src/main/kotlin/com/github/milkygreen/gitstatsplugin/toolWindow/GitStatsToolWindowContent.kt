@@ -24,13 +24,25 @@ class GitStatsToolWindowContent(private val toolWindow: ToolWindow, private val 
     val contentPanel = JPanel()
     private val refreshButton = JButton(AllIcons.Actions.Refresh)
     private val searchField = JBTextField()
-    private val loadingLabel = JLabel(AllIcons.Process.Step_1) // Loading icon
+    private val loadingLabel = JLabel(AllIcons.Process.Big.Step_1) // Loading icon
     private lateinit var tableModel: DefaultTableModel
     private var originalData: Array<Array<Any>> = arrayOf()
     val columnNames = arrayOf("Contributor", "Commits", "Latest Commit")
     private val tablePanel = JPanel(BorderLayout())
     private val loadingPanel = JPanel(BorderLayout())
     private lateinit var table: JTable
+    private val loadingIcons = arrayOf(
+        AllIcons.Process.Big.Step_1,
+        AllIcons.Process.Big.Step_2,
+        AllIcons.Process.Big.Step_3,
+        AllIcons.Process.Big.Step_4,
+        AllIcons.Process.Big.Step_5,
+        AllIcons.Process.Big.Step_6,
+        AllIcons.Process.Big.Step_7,
+        AllIcons.Process.Big.Step_8
+    )
+
+    private var loadingTimer: Timer? = null
 
     init {
         setupContentPanel()
@@ -104,13 +116,12 @@ class GitStatsToolWindowContent(private val toolWindow: ToolWindow, private val 
     }
 
     private fun setupLoadingPanel() {
-        loadingLabel.icon = AllIcons.Process.Big.Step_1 // Use a larger icon
-        loadingPanel.add(loadingLabel, BorderLayout.CENTER)
-        loadingLabel.isVisible = false // Initially hidden
+        loadingPanel.add(loadingLabel, BorderLayout.CENTER) // Add loadingLabel to loadingPanel
     }
 
     private fun refreshTableData() {
         refreshButton.isEnabled = false
+        searchField.text = "" // Clear the search field
         showLoadingIcon()
         cs.launch {
             try {
@@ -133,11 +144,24 @@ class GitStatsToolWindowContent(private val toolWindow: ToolWindow, private val 
         tablePanel.add(loadingPanel, BorderLayout.CENTER) // Add loading panel
         tablePanel.revalidate()
         tablePanel.repaint()
+
+        var iconIndex = 0
+        loadingTimer = Timer(100) {
+            loadingLabel.icon = loadingIcons[iconIndex]
+            iconIndex = (iconIndex + 1) % loadingIcons.size
+        }
+        loadingTimer?.start()
     }
 
     private fun hideLoadingIcon() {
         refreshButton.isEnabled = true
-        loadingLabel.isVisible = false // Hide loading icon
+        loadingLabel.isVisible = false
+        loadingTimer?.stop()
+        loadingTimer = null
+        tablePanel.removeAll() // Clear the loading panel
+        tablePanel.add(JScrollPane(table), BorderLayout.CENTER) // Add table
+        tablePanel.revalidate()
+        tablePanel.repaint()
     }
 
     private suspend fun handleRefreshError(e: Exception) {
