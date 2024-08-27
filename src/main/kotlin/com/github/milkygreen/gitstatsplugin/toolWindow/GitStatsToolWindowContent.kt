@@ -6,7 +6,9 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
+import com.intellij.ui.table.JBTable
 import kotlinx.coroutines.*
 import java.awt.BorderLayout
 import java.awt.event.MouseAdapter
@@ -84,7 +86,7 @@ class GitStatsToolWindowContent(private val toolWindow: ToolWindow, private val 
     private fun createTablePanel(): JPanel {
         setupTableModel()
         setupTable()
-        val scrollPane = JScrollPane(table)
+        val scrollPane = JBScrollPane(table)
         tablePanel.add(scrollPane, BorderLayout.CENTER)
         setupLoadingPanel()
         return tablePanel
@@ -99,7 +101,7 @@ class GitStatsToolWindowContent(private val toolWindow: ToolWindow, private val 
     }
 
     private fun setupTable() {
-        table = JTable(tableModel)
+        table = JBTable(tableModel)
         table.rowHeight = 20 // Set custom row height
         table.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
@@ -269,7 +271,7 @@ class GitStatsToolWindowContent(private val toolWindow: ToolWindow, private val 
             .map { arrayOf(it.key, it.value) })
 
         val tableModel = DefaultTableModel(data.toTypedArray(), columnNames)
-        val table = JTable(tableModel)
-        return JScrollPane(table)
+        val table = JBTable(tableModel)
+        return JBScrollPane(table)
     }
 }
