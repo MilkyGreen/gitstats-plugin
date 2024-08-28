@@ -9,7 +9,7 @@ import java.util.*
 @Service(Service.Level.PROJECT)
 class MyProjectService(
      private val project: Project,
-    val cs: CoroutineScope
+     val cs: CoroutineScope
 ) {
 
     data class DeveloperStats(
@@ -217,7 +217,7 @@ class MyProjectService(
             process.waitFor()
         }
 
-        val contributors = output.lines()
+        val commitData = output.lines()
             .asSequence()
             .filter { it.isNotBlank() }
             .map {
@@ -225,28 +225,17 @@ class MyProjectService(
                 val name = parts[0]
                 val rawDate = parts[1].split(" ")[0].toLong() * 1000
                 val date = Date(rawDate)
-                Contributor(name, date, getRelativeTime(date),0)
+                name to date
             }
-            .groupBy { it.name }
-            .map { (name, commits) ->
-                val latestCommit = commits.maxByOrNull { it.latestCommitDate }!!
-                val commitCountCommand = listOf("git", "rev-list", "--count", "HEAD", "--author=$name")
-                val commitCountProcess = withContext(Dispatchers.IO) {
-                    ProcessBuilder(commitCountCommand)
-                        .directory(repoDir)
-                        .start()
-                }
-                val commitCount = commitCountProcess.inputStream.bufferedReader().readText().trim().toInt()
-                withContext(Dispatchers.IO) {
-                    commitCountProcess.waitFor()
-                }
-                Contributor(name, latestCommit.latestCommitDate, latestCommit.relativeDate, commitCount)
-            }
-            .sortedByDescending { it.latestCommitDate }
-            .toList()
+            .groupBy({ it.first }, { it.second })
+
+        val contributors = commitData.map { (name, dates) ->
+            val latestCommitDate = dates.maxOrNull()!!
+            val commitCount = dates.size
+            Contributor(name, latestCommitDate, getRelativeTime(latestCommitDate), commitCount)
+        }.sortedByDescending { it.latestCommitDate }
 
         return contributors
-
     }
 
 }
