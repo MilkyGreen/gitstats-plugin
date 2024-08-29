@@ -54,14 +54,10 @@ class GitStatsToolWindowContent(private val toolWindow: ToolWindow, private val 
     private fun setupContentPanel() {
         contentPanel.layout = BorderLayout(0, 20)
         contentPanel.border = BorderFactory.createEmptyBorder(20, 0, 0, 0)
-        contentPanel.add(createControlsPanel(), BorderLayout.PAGE_END)
         contentPanel.add(createTablePanel(), BorderLayout.CENTER)
         contentPanel.add(createToolbarPanel(), BorderLayout.NORTH)
     }
 
-    private fun createControlsPanel(): JPanel {
-        return JPanel()
-    }
 
     private fun createToolbarPanel(): JPanel {
         val toolbarPanel = JPanel(BorderLayout())
@@ -181,11 +177,7 @@ class GitStatsToolWindowContent(private val toolWindow: ToolWindow, private val 
     private fun updateTableView() {
         tableModel.setDataVector(originalData, columnNames)
         adjustColumnWidths(table)
-        tablePanel.removeAll() // Remove loading panel
         table.columnModel.getColumn(0).cellRenderer = ContributorNameCellRenderer()
-        tablePanel.add(JScrollPane(table), BorderLayout.CENTER) // Add table
-        tablePanel.revalidate()
-        tablePanel.repaint()
     }
 
     private fun filterTableData() {
@@ -194,7 +186,7 @@ class GitStatsToolWindowContent(private val toolWindow: ToolWindow, private val 
             row[0].toString().lowercase().contains(searchText)
         }.toTypedArray()
         tableModel.setDataVector(filteredData, columnNames)
-        table.columnModel.getColumn(0).cellRenderer = ContributorNameCellRenderer() // Reapply cell renderer
+        table.columnModel.getColumn(0).cellRenderer = ContributorNameCellRenderer()
     }
 
     private fun adjustColumnWidths(table: JTable) {
